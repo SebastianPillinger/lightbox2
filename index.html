@@ -3,212 +3,199 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bildergalerie mit Swipe-Effekt</title>
+    <title>Bildergalerie</title>
     <style>
-        /* [Vorherige CSS-Stile bleiben gleich bis zum .lightbox-content] */
-        
-        .lightbox-content {
-            position: relative;
-            max-width: 90%;
-            max-height: 80vh;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 20px;
+        }
+
+        .thumbnail {
             width: 100%;
+            height: 200px;
+            object-fit: cover;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .lightbox {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            touch-action: none;
+        }
+
+        .lightbox.active {
+            display: flex;
+        }
+
+        .lightbox-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
         }
-        
-        .lightbox-slider {
-            display: flex;
-            height: 100%;
+
+        .lightbox-image {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
-            transition: transform 0.4s ease;
+            height: 100%;
+            object-fit: contain;
+            transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
+            will-change: transform;
         }
-        
-        .lightbox-slide {
-            min-width: 100%;
-            position: relative;
+
+        .lightbox-image.prev {
+            transform: translateX(-100%);
         }
-        
-        .lightbox-slide img {
-            max-width: 100%;
-            max-height: 80vh;
-            width: auto;
-            height: auto;
-            display: block;
-            margin: 0 auto;
+
+        .lightbox-image.next {
+            transform: translateX(100%);
         }
-        
-        /* [Rest der vorherigen CSS-Stile bleibt gleich] */
+
+        .lightbox-image.active {
+            transform: translateX(0);
+        }
+
+        .close-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
+            user-select: none;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .prev-btn {
+            left: 20px;
+        }
+
+        .next-btn {
+            right: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .nav-btn {
+                font-size: 30px;
+                padding: 10px;
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- [Der gesamte HTML-Code bleibt gleich bis zum Script-Tag] -->
-    
+    <div class="gallery">
+        <img src="bild1.jpg" class="thumbnail" onclick="openLightbox(0)">
+        <img src="bild2.jpg" class="thumbnail" onclick="openLightbox(1)">
+        <img src="bild3.jpg" class="thumbnail" onclick="openLightbox(2)">
+    </div>
+
+    <div class="lightbox" onclick="closeLightbox()">
+        <span class="close-btn">&times;</span>
+        <div class="lightbox-container">
+            <img src="bild1.jpg" class="lightbox-image">
+            <img src="bild2.jpg" class="lightbox-image">
+            <img src="bild3.jpg" class="lightbox-image">
+        </div>
+        <span class="nav-btn prev-btn" onclick="navigate(-1, event)">&#10094;</span>
+        <span class="nav-btn next-btn" onclick="navigate(1, event)">&#10095;</span>
+    </div>
+
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const lightbox = document.getElementById('lightbox');
-            const lightboxSlider = document.createElement('div');
-            lightboxSlider.className = 'lightbox-slider';
-            document.querySelector('.lightbox-content').prepend(lightboxSlider);
-            
-            const lightboxCaption = document.getElementById('lightbox-caption');
-            const galleryItems = document.querySelectorAll('.gallery-item');
-            const closeBtn = document.querySelector('.close-btn');
-            const prevBtn = document.querySelector('.prev-btn');
-            const nextBtn = document.querySelector('.next-btn');
-            
-            let currentIndex = 0;
-            let touchStartX = 0;
-            let isDragging = false;
-            let startPos = 0;
-            let currentTranslate = 0;
-            let prevTranslate = 0;
-            let animationID = 0;
-            
-            // Slider vorbereiten
-            function initSlider() {
-                lightboxSlider.innerHTML = '';
-                galleryItems.forEach((item, index) => {
-                    const slide = document.createElement('div');
-                    slide.className = 'lightbox-slide';
-                    const img = item.querySelector('img').cloneNode();
-                    slide.appendChild(img);
-                    lightboxSlider.appendChild(slide);
-                });
-                updateSliderPosition();
-            }
-            
-            // Slider Position aktualisieren
-            function updateSliderPosition() {
-                lightboxSlider.style.transform = `translateX(-${currentIndex * 100}%)`;
-                updateCaption();
-            }
-            
-            // Bildbeschreibung aktualisieren
-            function updateCaption() {
-                const img = galleryItems[currentIndex].querySelector('img');
-                lightboxCaption.textContent = img.alt || `Bild ${currentIndex + 1}`;
-            }
-            
-            // Lightbox öffnen
-            function openLightbox(index) {
-                currentIndex = index;
-                initSlider();
-                lightbox.classList.add('active');
-                document.body.style.overflow = 'hidden';
-            }
-            
-            // Lightbox schließen
-            function closeLightbox() {
-                lightbox.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-            
-            // Zum vorherigen Bild
-            function prevImage() {
-                if (currentIndex > 0) {
-                    currentIndex--;
-                    updateSliderPosition();
-                }
-            }
-            
-            // Zum nächsten Bild
-            function nextImage() {
-                if (currentIndex < galleryItems.length - 1) {
-                    currentIndex++;
-                    updateSliderPosition();
-                }
-            }
-            
-            // Touch Events für Swipe-Gesten
-            function startDrag(e) {
-                if (e.type === 'touchstart') {
-                    touchStartX = e.touches[0].clientX;
-                } else {
-                    touchStartX = e.clientX;
-                    e.preventDefault();
-                }
-                isDragging = true;
-                startPos = touchStartX;
-                prevTranslate = currentTranslate;
-                animationID = requestAnimationFrame(animation);
-                lightboxSlider.style.transition = 'none';
-            }
-            
-            function duringDrag(e) {
-                if (!isDragging) return;
-                let currentX;
-                if (e.type === 'touchmove') {
-                    currentX = e.touches[0].clientX;
-                } else {
-                    currentX = e.clientX;
-                }
-                currentTranslate = prevTranslate + currentX - startPos;
-                lightboxSlider.style.transform = `translateX(calc(-${currentIndex * 100}% + ${currentTranslate}px))`;
-            }
-            
-            function endDrag(e) {
-                if (!isDragging) return;
-                isDragging = false;
-                cancelAnimationFrame(animationID);
-                
-                let movedBy = currentTranslate;
-                lightboxSlider.style.transition = 'transform 0.4s ease';
-                
-                // Entscheiden ob zum nächsten/vorherigen Bild gewechselt wird
-                if (movedBy < -50 && currentIndex < galleryItems.length - 1) {
-                    currentIndex++;
-                } else if (movedBy > 50 && currentIndex > 0) {
-                    currentIndex--;
-                }
-                
-                updateSliderPosition();
-            }
-            
-            function animation() {
-                lightboxSlider.style.transform = `translateX(calc(-${currentIndex * 100}% + ${currentTranslate}px))`;
-                animationID = requestAnimationFrame(animation);
-            }
-            
-            // Event Listener
-            galleryItems.forEach((item, index) => {
-                item.addEventListener('click', () => openLightbox(index));
-                item.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        openLightbox(index);
-                    }
-                });
+        let touchStartX = 0;
+        let currentIndex = 0;
+        const images = document.querySelectorAll('.lightbox-image');
+        const lightbox = document.querySelector('.lightbox');
+
+        function openLightbox(index) {
+            currentIndex = index;
+            lightbox.classList.add('active');
+            images.forEach((img, i) => {
+                img.classList.remove('active', 'prev', 'next');
+                if (i === index) img.classList.add('active');
             });
+        }
+
+        function closeLightbox() {
+            lightbox.classList.remove('active');
+        }
+
+        function navigate(direction, event) {
+            event.stopPropagation();
+            showImage(currentIndex + direction);
+        }
+
+        function showImage(newIndex) {
+            if (newIndex < 0 || newIndex >= images.length) return;
+
+            const direction = newIndex > currentIndex ? 1 : -1;
+            const currentImage = images[currentIndex];
+            const newImage = images[newIndex];
+
+            newImage.classList.add(direction === 1 ? 'next' : 'prev');
+            currentImage.classList.add(direction === 1 ? 'prev' : 'next');
+            newImage.classList.add('active');
             
-            closeBtn.addEventListener('click', closeLightbox);
-            prevBtn.addEventListener('click', prevImage);
-            nextBtn.addEventListener('click', nextImage);
+            setTimeout(() => {
+                currentIndex = newIndex;
+                currentImage.classList.remove('active', 'prev', 'next');
+                newImage.classList.remove('prev', 'next');
+            }, 400);
+        }
+
+        // Touch Handling
+        lightbox.addEventListener('touchstart', e => {
+            touchStartX = e.touches[0].clientX;
+        }, false);
+
+        lightbox.addEventListener('touchend', e => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const deltaX = touchEndX - touchStartX;
             
-            // Mouse und Touch Events
-            lightboxSlider.addEventListener('touchstart', startDrag, { passive: false });
-            lightboxSlider.addEventListener('touchmove', duringDrag, { passive: false });
-            lightboxSlider.addEventListener('touchend', endDrag);
-            
-            lightboxSlider.addEventListener('mousedown', startDrag);
-            lightboxSlider.addEventListener('mousemove', duringDrag);
-            lightboxSlider.addEventListener('mouseup', endDrag);
-            lightboxSlider.addEventListener('mouseleave', endDrag);
-            
-            // Tastatursteuerung
-            document.addEventListener('keydown', (e) => {
-                if (!lightbox.classList.contains('active')) return;
-                
-                switch (e.key) {
-                    case 'Escape':
-                        closeLightbox();
-                        break;
-                    case 'ArrowLeft':
-                        prevImage();
-                        break;
-                    case 'ArrowRight':
-                        nextImage();
-                        break;
+            if (Math.abs(deltaX) > 50) {
+                if (deltaX > 0) {
+                    showImage(currentIndex - 1);
+                } else {
+                    showImage(currentIndex + 1);
                 }
-            });
+            }
+        }, false);
+
+        // Tastatursteuerung
+        document.addEventListener('keydown', e => {
+            if (lightbox.classList.contains('active')) {
+                if (e.key === 'ArrowLeft') showImage(currentIndex - 1);
+                if (e.key === 'ArrowRight') showImage(currentIndex + 1);
+                if (e.key === 'Escape') closeLightbox();
+            }
         });
     </script>
 </body>
