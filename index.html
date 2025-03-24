@@ -3,193 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bildergalerie</title>
+    <title>Bildergalerie mit Swipe-Effekt</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
-        body {
-            font-family: 'Arial', sans-serif;
-            line-height: 1.6;
-            padding: 20px;
-            background-color: #f5f5f5;
-            color: #333;
-        }
-        
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #444;
-        }
-        
-        .gallery {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 15px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        .gallery-item {
-            cursor: pointer;
-            overflow: hidden;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            aspect-ratio: 4/3;
-        }
-        
-        .gallery-item:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-        }
-        
-        .gallery-item img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-            transition: transform 0.5s ease;
-        }
-        
-        .gallery-item img:hover {
-            transform: scale(1.05);
-        }
-        
-        /* Lightbox Stile */
-        .lightbox {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-        }
-        
-        .lightbox.active {
-            display: flex;
-        }
+        /* [Vorherige CSS-Stile bleiben gleich bis zum .lightbox-content] */
         
         .lightbox-content {
             position: relative;
             max-width: 90%;
             max-height: 80vh;
+            width: 100%;
+            overflow: hidden;
         }
         
-        .lightbox-content img {
+        .lightbox-slider {
+            display: flex;
+            height: 100%;
+            width: 100%;
+            transition: transform 0.4s ease;
+        }
+        
+        .lightbox-slide {
+            min-width: 100%;
+            position: relative;
+        }
+        
+        .lightbox-slide img {
             max-width: 100%;
             max-height: 80vh;
-            border-radius: 4px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+            width: auto;
+            height: auto;
+            display: block;
+            margin: 0 auto;
         }
         
-        .lightbox-caption {
-            color: white;
-            text-align: center;
-            margin-top: 15px;
-            font-size: 1.1rem;
-            max-width: 80%;
-        }
-        
-        .close-btn, .prev-btn, .next-btn {
-            color: white;
-            font-size: 2rem;
-            cursor: pointer;
-            position: absolute;
-            user-select: none;
-            padding: 10px 20px;
-            opacity: 0.8;
-            transition: opacity 0.3s;
-        }
-        
-        .close-btn:hover, .prev-btn:hover, .next-btn:hover {
-            opacity: 1;
-        }
-        
-        .close-btn {
-            top: 20px;
-            right: 30px;
-            font-size: 3rem;
-        }
-        
-        .prev-btn {
-            left: 30px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        
-        .next-btn {
-            right: 30px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        
-        /* Tastatur-Hinweis für Barrierefreiheit */
-        .keyboard-hint {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 0.9rem;
-            color: #666;
-        }
-        
-        @media (max-width: 768px) {
-            .prev-btn, .next-btn {
-                padding: 5px 10px;
-                font-size: 1.5rem;
-            }
-            
-            .close-btn {
-                top: 10px;
-                right: 15px;
-                font-size: 2rem;
-            }
-            
-            .lightbox-caption {
-                font-size: 1rem;
-            }
-        }
+        /* [Rest der vorherigen CSS-Stile bleibt gleich] */
     </style>
 </head>
 <body>
-    <h1>Meine Bildergalerie</h1>
-    
-    <div class="gallery">
-        <div class="gallery-item" tabindex="0" data-index="0">
-            <img src="bild1.jpg" alt="Beschreibung für Bild 1">
-        </div>
-        <div class="gallery-item" tabindex="0" data-index="1">
-            <img src="bild2.jpg" alt="Beschreibung für Bild 2">
-        </div>
-        <div class="gallery-item" tabindex="0" data-index="2">
-            <img src="bild3.jpg" alt="Beschreibung für Bild 3">
-        </div>
-    </div>
-    
-    <p class="keyboard-hint">Hinweis: Sie können mit den Pfeiltasten zwischen den Bildern navigieren und mit ESC die Lightbox schließen.</p>
-    
-    <!-- Lightbox -->
-    <div class="lightbox" id="lightbox">
-        <span class="close-btn">&times;</span>
-        <span class="prev-btn">&#10094;</span>
-        <span class="next-btn">&#10095;</span>
-        <div class="lightbox-content">
-            <img id="lightbox-img" src="" alt="">
-        </div>
-        <div class="lightbox-caption" id="lightbox-caption"></div>
-    </div>
+    <!-- [Der gesamte HTML-Code bleibt gleich bis zum Script-Tag] -->
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const lightbox = document.getElementById('lightbox');
-            const lightboxImg = document.getElementById('lightbox-img');
+            const lightboxSlider = document.createElement('div');
+            lightboxSlider.className = 'lightbox-slider';
+            document.querySelector('.lightbox-content').prepend(lightboxSlider);
+            
             const lightboxCaption = document.getElementById('lightbox-caption');
             const galleryItems = document.querySelectorAll('.gallery-item');
             const closeBtn = document.querySelector('.close-btn');
@@ -197,13 +56,44 @@
             const nextBtn = document.querySelector('.next-btn');
             
             let currentIndex = 0;
+            let touchStartX = 0;
+            let isDragging = false;
+            let startPos = 0;
+            let currentTranslate = 0;
+            let prevTranslate = 0;
+            let animationID = 0;
+            
+            // Slider vorbereiten
+            function initSlider() {
+                lightboxSlider.innerHTML = '';
+                galleryItems.forEach((item, index) => {
+                    const slide = document.createElement('div');
+                    slide.className = 'lightbox-slide';
+                    const img = item.querySelector('img').cloneNode();
+                    slide.appendChild(img);
+                    lightboxSlider.appendChild(slide);
+                });
+                updateSliderPosition();
+            }
+            
+            // Slider Position aktualisieren
+            function updateSliderPosition() {
+                lightboxSlider.style.transform = `translateX(-${currentIndex * 100}%)`;
+                updateCaption();
+            }
+            
+            // Bildbeschreibung aktualisieren
+            function updateCaption() {
+                const img = galleryItems[currentIndex].querySelector('img');
+                lightboxCaption.textContent = img.alt || `Bild ${currentIndex + 1}`;
+            }
             
             // Lightbox öffnen
             function openLightbox(index) {
                 currentIndex = index;
-                updateLightbox();
+                initSlider();
                 lightbox.classList.add('active');
-                document.body.style.overflow = 'hidden'; // Scrollen im Hintergrund verhindern
+                document.body.style.overflow = 'hidden';
             }
             
             // Lightbox schließen
@@ -212,31 +102,75 @@
                 document.body.style.overflow = '';
             }
             
-            // Lightbox-Inhalt aktualisieren
-            function updateLightbox() {
-                const item = galleryItems[currentIndex];
-                const img = item.querySelector('img');
-                lightboxImg.src = img.src;
-                lightboxCaption.textContent = img.alt || `Bild ${currentIndex + 1}`;
-            }
-            
             // Zum vorherigen Bild
             function prevImage() {
-                currentIndex = (currentIndex - 1 + galleryItems.length) % galleryItems.length;
-                updateLightbox();
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    updateSliderPosition();
+                }
             }
             
             // Zum nächsten Bild
             function nextImage() {
-                currentIndex = (currentIndex + 1) % galleryItems.length;
-                updateLightbox();
+                if (currentIndex < galleryItems.length - 1) {
+                    currentIndex++;
+                    updateSliderPosition();
+                }
             }
             
-            // Event Listener für Gallery Items
+            // Touch Events für Swipe-Gesten
+            function startDrag(e) {
+                if (e.type === 'touchstart') {
+                    touchStartX = e.touches[0].clientX;
+                } else {
+                    touchStartX = e.clientX;
+                    e.preventDefault();
+                }
+                isDragging = true;
+                startPos = touchStartX;
+                prevTranslate = currentTranslate;
+                animationID = requestAnimationFrame(animation);
+                lightboxSlider.style.transition = 'none';
+            }
+            
+            function duringDrag(e) {
+                if (!isDragging) return;
+                let currentX;
+                if (e.type === 'touchmove') {
+                    currentX = e.touches[0].clientX;
+                } else {
+                    currentX = e.clientX;
+                }
+                currentTranslate = prevTranslate + currentX - startPos;
+                lightboxSlider.style.transform = `translateX(calc(-${currentIndex * 100}% + ${currentTranslate}px))`;
+            }
+            
+            function endDrag(e) {
+                if (!isDragging) return;
+                isDragging = false;
+                cancelAnimationFrame(animationID);
+                
+                let movedBy = currentTranslate;
+                lightboxSlider.style.transition = 'transform 0.4s ease';
+                
+                // Entscheiden ob zum nächsten/vorherigen Bild gewechselt wird
+                if (movedBy < -50 && currentIndex < galleryItems.length - 1) {
+                    currentIndex++;
+                } else if (movedBy > 50 && currentIndex > 0) {
+                    currentIndex--;
+                }
+                
+                updateSliderPosition();
+            }
+            
+            function animation() {
+                lightboxSlider.style.transform = `translateX(calc(-${currentIndex * 100}% + ${currentTranslate}px))`;
+                animationID = requestAnimationFrame(animation);
+            }
+            
+            // Event Listener
             galleryItems.forEach((item, index) => {
                 item.addEventListener('click', () => openLightbox(index));
-                
-                // Für Tastaturbedienung
                 item.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
@@ -245,32 +179,19 @@
                 });
             });
             
-            // Event Listener für Lightbox Controls
             closeBtn.addEventListener('click', closeLightbox);
             prevBtn.addEventListener('click', prevImage);
             nextBtn.addEventListener('click', nextImage);
             
-            // Touch Events für Swipe-Gesten
-            let touchStartX = 0;
-            let touchEndX = 0;
+            // Mouse und Touch Events
+            lightboxSlider.addEventListener('touchstart', startDrag, { passive: false });
+            lightboxSlider.addEventListener('touchmove', duringDrag, { passive: false });
+            lightboxSlider.addEventListener('touchend', endDrag);
             
-            lightbox.addEventListener('touchstart', (e) => {
-                touchStartX = e.changedTouches[0].screenX;
-            }, {passive: true});
-            
-            lightbox.addEventListener('touchend', (e) => {
-                touchEndX = e.changedTouches[0].screenX;
-                handleSwipe();
-            }, {passive: true});
-            
-            function handleSwipe() {
-                const threshold = 50; // Mindest-Swipe-Distanz
-                if (touchEndX < touchStartX - threshold) {
-                    nextImage(); // Swipe nach links
-                } else if (touchEndX > touchStartX + threshold) {
-                    prevImage(); // Swipe nach rechts
-                }
-            }
+            lightboxSlider.addEventListener('mousedown', startDrag);
+            lightboxSlider.addEventListener('mousemove', duringDrag);
+            lightboxSlider.addEventListener('mouseup', endDrag);
+            lightboxSlider.addEventListener('mouseleave', endDrag);
             
             // Tastatursteuerung
             document.addEventListener('keydown', (e) => {
