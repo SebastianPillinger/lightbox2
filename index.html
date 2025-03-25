@@ -1,9 +1,7 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instagram Gallery</title>
+    <!-- CSS unverändert -->
     <style>
         /* Verbesserte CSS-Struktur mit CSS-Variablen */
         :root {
@@ -138,32 +136,31 @@
             const nextBtn = lightbox.querySelector('.next');
             const closeBtn = lightbox.querySelector('.close');
             
-            let currentIndex = 0;
-            let maxIndex = galleryItems.length - 1;
-            let touchStartX = 0;
-            let isDragging = false;
-            let currentTranslate = 0;
-			let startPos = 0;
-			let currentPosition = 0;
-			let isAnimating = false;
+            // Clone erste und letzte Slide für nahtlosen Übergang
+            const firstClone = galleryItems[0].cloneNode(true);
+            const lastClone = galleryItems[galleryItems.length - 1].cloneNode(true);
+            
+            let currentIndex = 1; // Start bei originalem ersten Bild
+            let totalSlides = galleryItems.length + 2; // +2 für Clone
+            let isAnimating = false;
+            let startPos = 0;
 
-            // Lightbox Slides dynamisch generieren
-            galleryItems.forEach((img, index) => {
+            // Slider initialisieren
+            sliderContainer.appendChild(lastClone.cloneNode(true));
+            galleryItems.forEach(img => {
                 const slide = document.createElement('div');
                 slide.className = 'slider-item';
                 slide.innerHTML = `<img src="${img.src}" alt="${img.alt}">`;
                 sliderContainer.appendChild(slide);
-                
-                img.addEventListener('click', () => openLightbox(index));
             });
+            sliderContainer.appendChild(firstClone.cloneNode(true));
 
             function openLightbox(index) {
-    currentIndex = index;
-    currentPosition = -index * 100;
-    lightbox.style.display = 'flex';
-    sliderContainer.style.transform = `translateX(${currentPosition}%)`;
-    document.body.style.overflow = 'hidden';
-}
+                currentIndex = index + 1; // +1 wegen erstem Clone
+                sliderContainer.style.transform = `translateX(${-currentIndex * 100}%)`;
+                lightbox.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
 
             function closeLightbox() {
                 lightbox.style.display = 'none';
@@ -171,28 +168,35 @@
             }
 
             function navigate(direction) {
-    if (isAnimating) return;
-    
-    isAnimating = true;
-    currentIndex = (currentIndex + direction + galleryItems.length) % galleryItems.length;
-    currentPosition = -currentIndex * 100;
-    
-    sliderContainer.style.transition = 'transform 0.3s var(--transition-timing)';
-    sliderContainer.style.transform = `translateX(${currentPosition}%)`;
-    
-    sliderContainer.addEventListener('transitionend', () => {
-        isAnimating = false;
-    }, { once: true });
-}
-
-
-            function updateSlider() {
-                currentTranslate = -currentIndex * 100;
-                sliderContainer.style.transform = `translateX(${currentTranslate}%)`;
+                if (isAnimating) return;
+                
+                isAnimating = true;
+                currentIndex += direction;
+                
                 sliderContainer.style.transition = 'transform 0.3s var(--transition-timing)';
+                sliderContainer.style.transform = `translateX(${-currentIndex * 100}%)`;
+                
+                sliderContainer.addEventListener('transitionend', () => {
+                    // Unsichtbarer Übergang bei Clone-Slides
+                    if (currentIndex === 0) {
+                        sliderContainer.style.transition = 'none';
+                        currentIndex = galleryItems.length;
+                        sliderContainer.style.transform = `translateX(${-currentIndex * 100}%)`;
+                    }
+                    if (currentIndex === totalSlides - 1) {
+                        sliderContainer.style.transition = 'none';
+                        currentIndex = 1;
+                        sliderContainer.style.transform = `translateX(${-currentIndex * 100}%)`;
+                    }
+                    isAnimating = false;
+                }, { once: true });
             }
 
             // Event Listeners
+            galleryItems.forEach((img, index) => {
+                img.addEventListener('click', () => openLightbox(index));
+            });
+
             prevBtn.addEventListener('click', e => {
                 e.stopPropagation();
                 navigate(-1);
@@ -203,10 +207,7 @@
                 navigate(1);
             });
 
-            closeBtn.addEventListener('click', e => {
-                e.stopPropagation();
-                closeLightbox();
-            });
+            closeBtn.addEventListener('click', closeLightbox);
 
             lightbox.addEventListener('click', e => {
                 if (e.target === lightbox) closeLightbox();
@@ -214,50 +215,32 @@
 
             // Touch Handling
             lightbox.addEventListener('touchstart', e => {
-    if (isAnimating) return;
-    startPos = e.touches[0].clientX;
-    currentPosition = -currentIndex * 100;
-    sliderContainer.style.transition = 'none';
-});
+                startPos = e.touches[0].clientX;
+                sliderContainer.style.transition = 'none';
+            });
 
             lightbox.addEventListener('touchmove', e => {
-    if (isAnimating) return;
-    
-    const touchX = e.touches[0].clientX;
-    const deltaX = touchX - startPos;
-    const movePercentage = (deltaX / window.innerWidth) * 100;
-    
-    let newPosition = currentPosition + movePercentage;
-    
-    // Endlos-Loop ermöglichen
-    if (currentIndex === 0 && newPosition > 0) {
-        newPosition = -galleryItems.length * 100 + movePercentage;
-    }
-    if (currentIndex === maxIndex && newPosition < -maxIndex * 100) {
-        newPosition = 100 + movePercentage;
-    }
-    
-    sliderContainer.style.transform = `translateX(${newPosition}%)`;
-});
+                const touchX = e.touches[0].clientX;
+                const deltaX = touchX - startPos;
+                const movePercentage = (deltaX / window.innerWidth) * 100;
+                
+                sliderContainer.style.transform = `translateX(${-currentIndex * 100 + movePercentage}%)`;
+            });
 
-lightbox.addEventListener('touchend', e => {
-    if (isAnimating) return;
-    
-    const endPos = e.changedTouches[0].clientX;
-    const deltaX = endPos - startPos;
-    const absDelta = Math.abs(deltaX);
-    const threshold = window.innerWidth * 0.1;
-    
-    sliderContainer.style.transition = 'transform 0.3s var(--transition-timing)';
-    
-    if (absDelta > threshold) {
-        const direction = deltaX > 0 ? -1 : 1;
-        currentIndex = (currentIndex + direction + galleryItems.length) % galleryItems.length;
-    }
-    
-    currentPosition = -currentIndex * 100;
-    sliderContainer.style.transform = `translateX(${currentPosition}%)`;
-});
+            lightbox.addEventListener('touchend', e => {
+                const endPos = e.changedTouches[0].clientX;
+                const deltaX = endPos - startPos;
+                const absDelta = Math.abs(deltaX);
+                const threshold = window.innerWidth * 0.1;
+                
+                if (absDelta > threshold) {
+                    const direction = deltaX > 0 ? -1 : 1;
+                    navigate(direction);
+                } else {
+                    sliderContainer.style.transition = 'transform 0.3s var(--transition-timing)';
+                    sliderContainer.style.transform = `translateX(${-currentIndex * 100}%)`;
+                }
+            });
 
             // Keyboard Navigation
             document.addEventListener('keydown', e => {
@@ -268,10 +251,8 @@ lightbox.addEventListener('touchend', e => {
                 }
             });
 
-            // Prevent vertical scroll
-            lightbox.addEventListener('touchmove', e => {
-                if (isDragging) e.preventDefault();
-            }, { passive: false });
+            // Scroll-Sperre
+            lightbox.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
         })();
     </script>
 </body>
