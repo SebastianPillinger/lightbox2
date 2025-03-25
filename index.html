@@ -3,177 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instagram-ähnliche Galerie</title>
+    <title>Instagram-like Galerie</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        /* Thumbnail Grid */
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 10px;
         }
-        body {
-            background: #fafafa;
-        }
-        .gallery-container {
-            max-width: 600px;
-            margin: 20px auto;
-            background: #fff;
-            border: 1px solid #dbdbdb;
-            border-radius: 8px;
-        }
-        .gallery-image {
-            position: relative;
+
+        .gallery img {
             width: 100%;
-            height: 600px;
-            overflow: hidden;
-            touch-action: pan-y; /* Wichtig für Touch-Gesten */
-        }
-        .gallery-image img {
-            width: 100%;
-            height: 100%;
+            height: 200px;
             object-fit: cover;
-            display: none;
-            user-select: none; /* Verhindert Bildauswahl beim Swipen */
-        }
-        .gallery-image img.active {
-            display: block;
-            animation: fadeIn 0.3s;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0.8; }
-            to { opacity: 1; }
-        }
-        .gallery-nav {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 15px;
-        }
-        .gallery-nav button {
-            background: none;
-            border: none;
-            font-size: 24px;
             cursor: pointer;
         }
-        .gallery-indicators {
+
+        /* Lightbox */
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .slider-container {
+            display: flex;
+            transition: transform 0.3s ease;
+        }
+
+        .slider-item {
+            flex: 0 0 100%;
+            width: 100vw;
             display: flex;
             justify-content: center;
-            gap: 6px;
-            padding: 10px 0;
+            align-items: center;
         }
-        .indicator {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #a8a8a8;
-            transition: all 0.3s;
+
+        .lightbox img {
+            max-width: 90%;
+            max-height: 90vh;
+            object-fit: contain;
         }
-        .indicator.active {
-            background: #0095f6;
-            width: 16px;
-            border-radius: 4px;
+
+        /* Navigation Buttons */
+        .prev, .next {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 20px;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .prev { left: 10px; }
+        .next { right: 10px; }
+
+        .close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
-    <div class="gallery-container">
-        <div class="gallery-image">
-            <img src="bild1.jpg" class="active" alt="Bild 1">
-            <img src="bild2.jpg" alt="Bild 2">
-            <img src="bild3.jpg" alt="Bild 3">
+    <div class="gallery">
+        <img src="bild1.jpg" onclick="openLightbox(0)">
+        <img src="bild2.jpg" onclick="openLightbox(1)">
+        <img src="bild3.jpg" onclick="openLightbox(2)">
+    </div>
+
+    <div class="lightbox" onclick="closeLightbox(event)">
+        <span class="close">&times;</span>
+        <div class="slider-container">
+            <div class="slider-item"><img src="bild1.jpg"></div>
+            <div class="slider-item"><img src="bild2.jpg"></div>
+            <div class="slider-item"><img src="bild3.jpg"></div>
         </div>
-        <div class="gallery-nav">
-            <button id="prev-btn">‹</button>
-            <button id="next-btn">›</button>
-        </div>
-        <div class="gallery-indicators">
-            <span class="indicator active" data-index="0"></span>
-            <span class="indicator" data-index="1"></span>
-            <span class="indicator" data-index="2"></span>
-        </div>
+        <a class="prev" onclick="navigate(-1, event)">&#10094;</a>
+        <a class="next" onclick="navigate(1, event)">&#10095;</a>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const gallery = document.querySelector('.gallery-image');
-            const images = document.querySelectorAll('.gallery-image img');
-            const indicators = document.querySelectorAll('.indicator');
-            const prevBtn = document.getElementById('prev-btn');
-            const nextBtn = document.getElementById('next-btn');
-            let currentIndex = 0;
-            let startX, moveX;
-            const swipeThreshold = 50;
+        let currentIndex = 0;
+        let touchStartX = 0;
 
-            // Bildwechsel-Funktion
-            function showImage(index) {
-                images.forEach(img => img.classList.remove('active'));
-                images[index].classList.add('active');
-                
-                indicators.forEach(ind => ind.classList.remove('active'));
-                indicators[index].classList.add('active');
-                
-                currentIndex = index;
+        function openLightbox(index) {
+            currentIndex = index;
+            document.querySelector('.lightbox').style.display = 'flex';
+            updateSlider();
+        }
+
+        function closeLightbox(event) {
+            if (event.target.classList.contains('lightbox')) {
+                document.querySelector('.lightbox').style.display = 'none';
             }
+        }
 
-            // Button-Klicks
-            prevBtn.addEventListener('click', () => {
-                const newIndex = (currentIndex - 1 + images.length) % images.length;
-                showImage(newIndex);
-            });
+        function navigate(direction, event) {
+            event.stopPropagation();
+            currentIndex = (currentIndex + direction + 3) % 3;
+            updateSlider();
+        }
+
+        function updateSlider() {
+            document.querySelector('.slider-container').style.transform = 
+                `translateX(-${currentIndex * 100}%)`;
+        }
+
+        // Touch Handling
+        document.querySelector('.lightbox').addEventListener('touchstart', e => {
+            touchStartX = e.touches[0].clientX;
+        });
+
+        document.querySelector('.lightbox').addEventListener('touchend', e => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const deltaX = touchStartX - touchEndX;
             
-            nextBtn.addEventListener('click', () => {
-                const newIndex = (currentIndex + 1) % images.length;
-                showImage(newIndex);
-            });
+            if (Math.abs(deltaX) > 50) {
+                if (deltaX > 0) navigate(1, e);
+                else navigate(-1, e);
+            }
+        });
 
-            // Touch-Gesten (Mobile)
-            gallery.addEventListener('touchstart', (e) => {
-                startX = e.touches[0].clientX;
-            });
-
-            gallery.addEventListener('touchmove', (e) => {
-                if (!startX) return;
-                moveX = e.touches[0].clientX;
-            });
-
-            gallery.addEventListener('touchend', () => {
-                if (!startX || !moveX) return;
-                
-                const diffX = startX - moveX;
-                
-                if (diffX > swipeThreshold) {
-                    nextBtn.click(); // Swipe nach links → nächstes Bild
-                } else if (diffX < -swipeThreshold) {
-                    prevBtn.click(); // Swipe nach rechts → vorheriges Bild
-                }
-                
-                startX = null;
-                moveX = null;
-            });
-
-            // Maus-Swipe (Desktop)
-            gallery.addEventListener('mousedown', (e) => {
-                startX = e.clientX;
-            });
-
-            gallery.addEventListener('mouseup', (e) => {
-                if (!startX) return;
-                
-                const diffX = startX - e.clientX;
-                
-                if (diffX > swipeThreshold) {
-                    nextBtn.click();
-                } else if (diffX < -swipeThreshold) {
-                    prevBtn.click();
-                }
-                
-                startX = null;
-            });
-
-            // Tastatursteuerung (Pfeiltasten)
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'ArrowLeft') prevBtn.click();
-                if (e.key === 'ArrowRight') nextBtn.click();
-            });
+        // Keyboard Navigation
+        document.addEventListener('keydown', e => {
+            if (document.querySelector('.lightbox').style.display === 'flex') {
+                if (e.key === 'ArrowLeft') navigate(-1, e);
+                if (e.key === 'ArrowRight') navigate(1, e);
+                if (e.key === 'Escape') closeLightbox(e);
+            }
         });
     </script>
 </body>
