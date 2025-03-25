@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instagram-like Galerie</title>
+    <title>Instagram Gallery</title>
     <style>
         /* Thumbnail Grid */
         .gallery {
@@ -18,6 +18,12 @@
             height: 200px;
             object-fit: cover;
             cursor: pointer;
+            border-radius: 3px;
+            transition: transform 0.2s;
+        }
+
+        .gallery img:hover {
+            transform: scale(1.02);
         }
 
         /* Lightbox */
@@ -28,53 +34,72 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.95);
             justify-content: center;
             align-items: center;
             z-index: 1000;
+            touch-action: none;
         }
 
         .slider-container {
             display: flex;
-            transition: transform 0.3s ease;
+            height: 100%;
+            will-change: transform;
         }
 
         .slider-item {
             flex: 0 0 100%;
             width: 100vw;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
+            user-select: none;
         }
 
         .lightbox img {
-            max-width: 90%;
-            max-height: 90vh;
+            max-width: 100%;
+            max-height: 100vh;
             object-fit: contain;
+            pointer-events: none;
         }
 
-        /* Navigation Buttons */
+        /* Navigation */
         .prev, .next {
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
             padding: 20px;
-            color: white;
-            font-size: 30px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 40px;
             cursor: pointer;
             user-select: none;
+            transition: opacity 0.2s;
         }
 
-        .prev { left: 10px; }
-        .next { right: 10px; }
+        .prev:hover, .next:hover {
+            opacity: 0.7;
+        }
+
+        .prev { left: 20px; }
+        .next { right: 20px; }
 
         .close {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 25px;
+            right: 25px;
             color: white;
             font-size: 40px;
             cursor: pointer;
+            padding: 10px;
+            z-index: 1001;
+        }
+
+        @media (max-width: 768px) {
+            .prev, .next {
+                font-size: 30px;
+                padding: 15px;
+            }
         }
     </style>
 </head>
@@ -86,66 +111,101 @@
     </div>
 
     <div class="lightbox" onclick="closeLightbox(event)">
-        <span class="close">&times;</span>
+        <span class="close" onclick="closeLightbox(event)">&times;</span>
         <div class="slider-container">
             <div class="slider-item"><img src="bild1.jpg"></div>
             <div class="slider-item"><img src="bild2.jpg"></div>
             <div class="slider-item"><img src="bild3.jpg"></div>
         </div>
-        <a class="prev" onclick="navigate(-1, event)">&#10094;</a>
-        <a class="next" onclick="navigate(1, event)">&#10095;</a>
+        <div class="prev" onclick="navigate(-1, event)">❮</div>
+        <div class="next" onclick="navigate(1, event)">❯</div>
     </div>
 
     <script>
         let currentIndex = 0;
         let touchStartX = 0;
+        let isDragging = false;
+        let currentTranslate = 0;
+        const slider = document.querySelector('.slider-container');
+        const lightbox = document.querySelector('.lightbox');
 
         function openLightbox(index) {
             currentIndex = index;
-            document.querySelector('.lightbox').style.display = 'flex';
-            updateSlider();
+            currentTranslate = -index * 100;
+            lightbox.style.display = 'flex';
+            slider.style.transform = `translateX(${currentTranslate}%)`;
+            slider.style.transition = 'transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1)';
         }
 
         function closeLightbox(event) {
-            if (event.target.classList.contains('lightbox')) {
-                document.querySelector('.lightbox').style.display = 'none';
+            if (event.target.classList.contains('lightbox') || event.target.classList.contains('close')) {
+                lightbox.style.display = 'none';
             }
         }
 
         function navigate(direction, event) {
             event.stopPropagation();
-            currentIndex = (currentIndex + direction + 3) % 3;
+            currentIndex = Math.max(0, Math.min(currentIndex + direction, 2));
             updateSlider();
         }
 
         function updateSlider() {
-            document.querySelector('.slider-container').style.transform = 
-                `translateX(-${currentIndex * 100}%)`;
+            currentTranslate = -currentIndex * 100;
+            slider.style.transition = 'transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1)';
+            slider.style.transform = `translateX(${currentTranslate}%)`;
         }
 
         // Touch Handling
-        document.querySelector('.lightbox').addEventListener('touchstart', e => {
+        lightbox.addEventListener('touchstart', e => {
             touchStartX = e.touches[0].clientX;
+            isDragging = true;
+            slider.style.transition = 'none';
         });
 
-        document.querySelector('.lightbox').addEventListener('touchend', e => {
+        lightbox.addEventListener('touchmove', e => {
+            if (!isDragging) return;
+            
+            const currentX = e.touches[0].clientX;
+            const deltaX = touchStartX - currentX;
+            let newTranslate = currentTranslate + (-deltaX / window.innerWidth * 100);
+            
+            // Boundary limits
+            if(currentIndex === 0) newTranslate = Math.min(newTranslate, 0);
+            if(currentIndex === 2) newTranslate = Math.max(newTranslate, -200);
+            
+            slider.style.transform = `translateX(${newTranslate}%)`;
+        });
+
+        lightbox.addEventListener('touchend', e => {
+            if (!isDragging) return;
+            isDragging = false;
+            
             const touchEndX = e.changedTouches[0].clientX;
             const deltaX = touchStartX - touchEndX;
+            const threshold = window.innerWidth * 0.15;
             
-            if (Math.abs(deltaX) > 50) {
-                if (deltaX > 0) navigate(1, e);
-                else navigate(-1, e);
+            if (Math.abs(deltaX) > threshold) {
+                currentIndex = deltaX > 0 ? 
+                    Math.min(currentIndex + 1, 2) : 
+                    Math.max(currentIndex - 1, 0);
             }
+            
+            updateSlider();
         });
 
         // Keyboard Navigation
         document.addEventListener('keydown', e => {
-            if (document.querySelector('.lightbox').style.display === 'flex') {
+            if (lightbox.style.display === 'flex') {
                 if (e.key === 'ArrowLeft') navigate(-1, e);
                 if (e.key === 'ArrowRight') navigate(1, e);
                 if (e.key === 'Escape') closeLightbox(e);
             }
         });
+
+        // Prevent vertical scroll when swiping
+        lightbox.addEventListener('touchmove', e => {
+            if (isDragging) e.preventDefault();
+        }, { passive: false });
     </script>
 </body>
 </html>
