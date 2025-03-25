@@ -143,6 +143,9 @@
             let touchStartX = 0;
             let isDragging = false;
             let currentTranslate = 0;
+			let startPos = 0;
+			let currentPosition = 0;
+			let isAnimating = false;
 
             // Lightbox Slides dynamisch generieren
             galleryItems.forEach((img, index) => {
@@ -155,11 +158,12 @@
             });
 
             function openLightbox(index) {
-                currentIndex = index;
-                lightbox.style.display = 'flex';
-                updateSlider();
-                document.body.style.overflow = 'hidden';
-            }
+    currentIndex = index;
+    currentPosition = -index * 100;
+    lightbox.style.display = 'flex';
+    sliderContainer.style.transform = `translateX(${currentPosition}%)`;
+    document.body.style.overflow = 'hidden';
+}
 
             function closeLightbox() {
                 lightbox.style.display = 'none';
@@ -167,9 +171,23 @@
             }
 
             function navigate(direction) {
-                currentIndex = Math.max(0, Math.min(currentIndex + direction, maxIndex));
-                updateSlider();
-            }
+    if (isAnimating) return;
+    
+    const newIndex = currentIndex + direction;
+    if (newIndex < 0 || newIndex > maxIndex) return;
+    
+    isAnimating = true;
+    currentIndex = newIndex;
+    currentPosition = -currentIndex * 100;
+    
+    sliderContainer.style.transition = 'transform 0.3s var(--transition-timing)';
+    sliderContainer.style.transform = `translateX(${currentPosition}%)`;
+    
+    sliderContainer.addEventListener('transitionend', () => {
+        isAnimating = false;
+    }, { once: true });
+}
+
 
             function updateSlider() {
                 currentTranslate = -currentIndex * 100;
@@ -199,41 +217,46 @@
 
             // Touch Handling
             lightbox.addEventListener('touchstart', e => {
-                touchStartX = e.touches[0].clientX;
-                isDragging = true;
-                sliderContainer.style.transition = 'none';
-            });
+    if (isAnimating) return;
+    startPos = e.touches[0].clientX;
+    currentPosition = -currentIndex * 100;
+    sliderContainer.style.transition = 'none';
+});
 
             lightbox.addEventListener('touchmove', e => {
-                if (!isDragging) return;
-                
-                const touchX = e.touches[0].clientX;
-                const deltaX = touchStartX - touchX;
-                const percentage = (deltaX / window.innerWidth) * 100;
-                
-                let newTranslate = currentTranslate + percentage;
-                
-                // Begrenzung für erste und letzte Slide
-                if (currentIndex === 0) newTranslate = Math.min(newTranslate, 0);
-                if (currentIndex === maxIndex) newTranslate = Math.max(newTranslate, -maxIndex * 100);
-                
-                sliderContainer.style.transform = `translateX(${newTranslate}%)`;
-            });
+    if (isAnimating) return;
+    
+    const touchX = e.touches[0].clientX;
+    const deltaX = touchX - startPos;
+    const movePercentage = (deltaX / window.innerWidth) * 100;
+    
+    let newPosition = currentPosition + movePercentage;
+    
+    // Begrenzung für erste und letzte Slide
+    if (currentIndex === 0 && newPosition > 0) newPosition = 0;
+    if (currentIndex === maxIndex && newPosition < -maxIndex * 100) newPosition = -maxIndex * 100;
+    
+    sliderContainer.style.transform = `translateX(${newPosition}%)`;
+});
 
-            lightbox.addEventListener('touchend', e => {
-                if (!isDragging) return;
-                isDragging = false;
-                
-                const touchEndX = e.changedTouches[0].clientX;
-                const deltaX = touchStartX - touchEndX;
-                const threshold = window.innerWidth * 0.15;
-                
-                if (Math.abs(deltaX) > threshold) {
-                    navigate(deltaX > 0 ? 1 : -1);
-                } else {
-                    updateSlider();
-                }
-            });
+lightbox.addEventListener('touchend', e => {
+    if (isAnimating) return;
+    
+    const endPos = e.changedTouches[0].clientX;
+    const deltaX = endPos - startPos;
+    const absDelta = Math.abs(deltaX);
+    const threshold = window.innerWidth * 0.1;
+    
+    sliderContainer.style.transition = 'transform 0.3s var(--transition-timing)';
+    
+    if (absDelta > threshold) {
+        const direction = deltaX > 0 ? -1 : 1;
+        navigate(direction);
+    } else {
+        // Zurück zur aktuellen Position
+        sliderContainer.style.transform = `translateX(${currentPosition}%)`;
+    }
+});
 
             // Keyboard Navigation
             document.addEventListener('keydown', e => {
