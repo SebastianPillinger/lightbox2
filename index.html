@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <!-- CSS unverändert -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Gallery</title>
     <style>
-        /* Verbesserte CSS-Struktur mit CSS-Variablen */
         :root {
             --transition-timing: cubic-bezier(0.22, 0.61, 0.36, 1);
             --lightbox-bg: rgba(0, 0, 0, 0.95);
@@ -31,7 +32,6 @@
             transform: scale(1.02);
         }
 
-        /* Lightbox Verbesserungen */
         .lightbox {
             display: none;
             position: fixed;
@@ -49,13 +49,13 @@
         .slider-container {
             display: flex;
             height: 100%;
-            width: 100%;
+            width: calc(100% * var(--total-slides));
             will-change: transform;
         }
 
         .slider-item {
             flex: 0 0 100%;
-            min-width: 100%;
+            width: 100vw;
             height: 100vh;
             display: flex;
             justify-content: center;
@@ -70,7 +70,6 @@
             pointer-events: none;
         }
 
-        /* Navigation Verbesserungen */
         .prev, .next, .close {
             position: absolute;
             color: rgba(255, 255, 255, 0.8);
@@ -101,23 +100,17 @@
             :root {
                 --control-size: 30px;
             }
-            
             .lightbox img {
                 max-width: 100%;
             }
-        }
-
-        /* Accessibility */
-        [aria-hidden="true"] {
-            display: none;
         }
     </style>
 </head>
 <body>
     <div class="gallery">
-        <img src="bild1.jpg" alt="Beschreibung Bild 1">
-        <img src="bild2.jpg" alt="Beschreibung Bild 2">
-        <img src="bild3.jpg" alt="Beschreibung Bild 3">
+        <img src="bild1.jpg" alt="Beschreibung 1">
+        <img src="bild2.jpg" alt="Beschreibung 2">
+        <img src="bild3.jpg" alt="Beschreibung 3">
     </div>
 
     <div class="lightbox">
@@ -132,39 +125,46 @@
             const galleryItems = document.querySelectorAll('.gallery img');
             const lightbox = document.querySelector('.lightbox');
             const sliderContainer = lightbox.querySelector('.slider-container');
-            const prevBtn = lightbox.querySelector('.prev');
-            const nextBtn = lightbox.querySelector('.next');
-            const closeBtn = lightbox.querySelector('.close');
             
-            // Clone erste und letzte Slide für nahtlosen Übergang
+            // Clone erstellen
             const firstClone = galleryItems[0].cloneNode(true);
-            const lastClone = galleryItems[galleryItems.length - 1].cloneNode(true);
+            const lastClone = galleryItems[galleryItems.length-1].cloneNode(true);
             
-            let currentIndex = 1; // Start bei originalem ersten Bild
-            let totalSlides = galleryItems.length + 2; // +2 für Clone
+            let currentIndex = 1;
             let isAnimating = false;
-            let startPos = 0;
+            let startX = 0;
+            let initialTranslate = 0;
 
             // Slider initialisieren
-            sliderContainer.appendChild(lastClone.cloneNode(true));
-            galleryItems.forEach(img => {
+            function initSlider() {
+                sliderContainer.innerHTML = '';
+                
+                // Clone hinzufügen
+                const lastSlide = createSlide(lastClone);
+                const firstSlide = createSlide(firstClone);
+                
+                sliderContainer.appendChild(lastSlide);
+                galleryItems.forEach(img => sliderContainer.appendChild(createSlide(img)));
+                sliderContainer.appendChild(firstSlide);
+                
+                // CSS Variable setzen
+                const total = galleryItems.length + 2;
+                sliderContainer.style.setProperty('--total-slides', total);
+            }
+
+            function createSlide(img) {
                 const slide = document.createElement('div');
                 slide.className = 'slider-item';
                 slide.innerHTML = `<img src="${img.src}" alt="${img.alt}">`;
-                sliderContainer.appendChild(slide);
-            });
-            sliderContainer.appendChild(firstClone.cloneNode(true));
-
-            function openLightbox(index) {
-                currentIndex = index + 1; // +1 wegen erstem Clone
-                sliderContainer.style.transform = `translateX(${-currentIndex * 100}%)`;
-                lightbox.style.display = 'flex';
-                document.body.style.overflow = 'hidden';
+                return slide;
             }
 
-            function closeLightbox() {
-                lightbox.style.display = 'none';
-                document.body.style.overflow = '';
+            function openLightbox(index) {
+                currentIndex = index + 1;
+                initialTranslate = -currentIndex * 100;
+                sliderContainer.style.transform = `translateX(${initialTranslate}%)`;
+                lightbox.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
             }
 
             function navigate(direction) {
@@ -177,15 +177,15 @@
                 sliderContainer.style.transform = `translateX(${-currentIndex * 100}%)`;
                 
                 sliderContainer.addEventListener('transitionend', () => {
-                    // Unsichtbarer Übergang bei Clone-Slides
+                    // Unsichtbare Übergänge
                     if (currentIndex === 0) {
-                        sliderContainer.style.transition = 'none';
                         currentIndex = galleryItems.length;
+                        sliderContainer.style.transition = 'none';
                         sliderContainer.style.transform = `translateX(${-currentIndex * 100}%)`;
                     }
-                    if (currentIndex === totalSlides - 1) {
-                        sliderContainer.style.transition = 'none';
+                    if (currentIndex === galleryItems.length + 1) {
                         currentIndex = 1;
+                        sliderContainer.style.transition = 'none';
                         sliderContainer.style.transform = `translateX(${-currentIndex * 100}%)`;
                     }
                     isAnimating = false;
@@ -194,65 +194,60 @@
 
             // Event Listeners
             galleryItems.forEach((img, index) => {
-                img.addEventListener('click', () => openLightbox(index));
+                img.addEventListener('click', () => {
+                    initSlider();
+                    openLightbox(index);
+                });
             });
 
-            prevBtn.addEventListener('click', e => {
-                e.stopPropagation();
-                navigate(-1);
-            });
-
-            nextBtn.addEventListener('click', e => {
-                e.stopPropagation();
-                navigate(1);
-            });
-
-            closeBtn.addEventListener('click', closeLightbox);
-
-            lightbox.addEventListener('click', e => {
-                if (e.target === lightbox) closeLightbox();
+            lightbox.querySelector('.prev').addEventListener('click', () => navigate(-1));
+            lightbox.querySelector('.next').addEventListener('click', () => navigate(1));
+            lightbox.querySelector('.close').addEventListener('click', () => {
+                lightbox.style.display = 'none';
+                document.body.style.overflow = '';
             });
 
             // Touch Handling
             lightbox.addEventListener('touchstart', e => {
-                startPos = e.touches[0].clientX;
+                startX = e.touches[0].clientX;
+                initialTranslate = -currentIndex * 100;
                 sliderContainer.style.transition = 'none';
             });
 
             lightbox.addEventListener('touchmove', e => {
-                const touchX = e.touches[0].clientX;
-                const deltaX = touchX - startPos;
-                const movePercentage = (deltaX / window.innerWidth) * 100;
-                
-                sliderContainer.style.transform = `translateX(${-currentIndex * 100 + movePercentage}%)`;
+                if (!isAnimating) {
+                    const currentX = e.touches[0].clientX;
+                    const deltaX = currentX - startX;
+                    const translate = initialTranslate + (deltaX / window.innerWidth * 100);
+                    sliderContainer.style.transform = `translateX(${translate}%)`;
+                }
             });
 
             lightbox.addEventListener('touchend', e => {
-                const endPos = e.changedTouches[0].clientX;
-                const deltaX = endPos - startPos;
+                const endX = e.changedTouches[0].clientX;
+                const deltaX = endX - startX;
                 const absDelta = Math.abs(deltaX);
                 const threshold = window.innerWidth * 0.1;
-                
+
                 if (absDelta > threshold) {
                     const direction = deltaX > 0 ? -1 : 1;
                     navigate(direction);
                 } else {
-                    sliderContainer.style.transition = 'transform 0.3s var(--transition-timing)';
+                    sliderContainer.style.transition = 'transform 0.2s ease-out';
                     sliderContainer.style.transform = `translateX(${-currentIndex * 100}%)`;
                 }
             });
 
-            // Keyboard Navigation
+            // Tastatur
             document.addEventListener('keydown', e => {
                 if (lightbox.style.display === 'flex') {
                     if (e.key === 'ArrowLeft') navigate(-1);
                     if (e.key === 'ArrowRight') navigate(1);
-                    if (e.key === 'Escape') closeLightbox();
+                    if (e.key === 'Escape') lightbox.style.display = 'none';
                 }
             });
 
-            // Scroll-Sperre
-            lightbox.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+            initSlider();
         })();
     </script>
 </body>
