@@ -5,10 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Instagram Gallery</title>
     <style>
-        /* Thumbnail Grid */
+        /* Verbesserte CSS-Struktur mit CSS-Variablen */
+        :root {
+            --transition-timing: cubic-bezier(0.22, 0.61, 0.36, 1);
+            --lightbox-bg: rgba(0, 0, 0, 0.95);
+            --control-size: 40px;
+        }
+
         .gallery {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 10px;
             padding: 10px;
         }
@@ -20,13 +26,14 @@
             cursor: pointer;
             border-radius: 3px;
             transition: transform 0.2s;
+            background: #f0f0f0;
         }
 
         .gallery img:hover {
             transform: scale(1.02);
         }
 
-        /* Lightbox */
+        /* Lightbox Verbesserungen */
         .lightbox {
             display: none;
             position: fixed;
@@ -34,7 +41,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.95);
+            background: var(--lightbox-bg);
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -44,12 +51,13 @@
         .slider-container {
             display: flex;
             height: 100%;
+            width: 100%;
             will-change: transform;
         }
 
         .slider-item {
             flex: 0 0 100%;
-            width: 100vw;
+            min-width: 100%;
             height: 100vh;
             display: flex;
             justify-content: center;
@@ -58,154 +66,189 @@
         }
 
         .lightbox img {
-            max-width: 100%;
-            max-height: 100vh;
+            max-width: 90%;
+            max-height: 90vh;
             object-fit: contain;
             pointer-events: none;
         }
 
-        /* Navigation */
-        .prev, .next {
+        /* Navigation Verbesserungen */
+        .prev, .next, .close {
             position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            padding: 20px;
             color: rgba(255, 255, 255, 0.8);
-            font-size: 40px;
             cursor: pointer;
-            user-select: none;
             transition: opacity 0.2s;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+            padding: 10px;
+            line-height: 1;
         }
 
-        .prev:hover, .next:hover {
-            opacity: 0.7;
+        .prev, .next {
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: var(--control-size);
         }
 
         .prev { left: 20px; }
         .next { right: 20px; }
 
         .close {
-            position: absolute;
             top: 25px;
             right: 25px;
-            color: white;
-            font-size: 40px;
-            cursor: pointer;
-            padding: 10px;
-            z-index: 1001;
+            font-size: calc(var(--control-size) * 1.5);
         }
 
         @media (max-width: 768px) {
-            .prev, .next {
-                font-size: 30px;
-                padding: 15px;
+            :root {
+                --control-size: 30px;
             }
+            
+            .lightbox img {
+                max-width: 100%;
+            }
+        }
+
+        /* Accessibility */
+        [aria-hidden="true"] {
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="gallery">
-        <img src="bild1.jpg" onclick="openLightbox(0)">
-        <img src="bild2.jpg" onclick="openLightbox(1)">
-        <img src="bild3.jpg" onclick="openLightbox(2)">
+        <img src="bild1.jpg" alt="Beschreibung Bild 1">
+        <img src="bild2.jpg" alt="Beschreibung Bild 2">
+        <img src="bild3.jpg" alt="Beschreibung Bild 3">
     </div>
 
-    <div class="lightbox" onclick="closeLightbox(event)">
-        <span class="close" onclick="closeLightbox(event)">&times;</span>
-        <div class="slider-container">
-            <div class="slider-item"><img src="bild1.jpg"></div>
-            <div class="slider-item"><img src="bild2.jpg"></div>
-            <div class="slider-item"><img src="bild3.jpg"></div>
-        </div>
-        <div class="prev" onclick="navigate(-1, event)">❮</div>
-        <div class="next" onclick="navigate(1, event)">❯</div>
+    <div class="lightbox">
+        <div class="slider-container"></div>
+        <button class="close" aria-label="Schließen">&times;</button>
+        <button class="prev" aria-label="Vorheriges Bild">❮</button>
+        <button class="next" aria-label="Nächstes Bild">❯</button>
     </div>
 
     <script>
-        let currentIndex = 0;
-        let touchStartX = 0;
-        let isDragging = false;
-        let currentTranslate = 0;
-        const slider = document.querySelector('.slider-container');
-        const lightbox = document.querySelector('.lightbox');
+        (function() {
+            const galleryItems = document.querySelectorAll('.gallery img');
+            const lightbox = document.querySelector('.lightbox');
+            const sliderContainer = lightbox.querySelector('.slider-container');
+            const prevBtn = lightbox.querySelector('.prev');
+            const nextBtn = lightbox.querySelector('.next');
+            const closeBtn = lightbox.querySelector('.close');
+            
+            let currentIndex = 0;
+            let maxIndex = galleryItems.length - 1;
+            let touchStartX = 0;
+            let isDragging = false;
+            let currentTranslate = 0;
 
-        function openLightbox(index) {
-            currentIndex = index;
-            currentTranslate = -index * 100;
-            lightbox.style.display = 'flex';
-            slider.style.transform = `translateX(${currentTranslate}%)`;
-            slider.style.transition = 'transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1)';
-        }
+            // Lightbox Slides dynamisch generieren
+            galleryItems.forEach((img, index) => {
+                const slide = document.createElement('div');
+                slide.className = 'slider-item';
+                slide.innerHTML = `<img src="${img.src}" alt="${img.alt}">`;
+                sliderContainer.appendChild(slide);
+                
+                img.addEventListener('click', () => openLightbox(index));
+            });
 
-        function closeLightbox(event) {
-            if (event.target.classList.contains('lightbox') || event.target.classList.contains('close')) {
+            function openLightbox(index) {
+                currentIndex = index;
+                lightbox.style.display = 'flex';
+                updateSlider();
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeLightbox() {
                 lightbox.style.display = 'none';
+                document.body.style.overflow = '';
             }
-        }
 
-        function navigate(direction, event) {
-            event.stopPropagation();
-            currentIndex = Math.max(0, Math.min(currentIndex + direction, 2));
-            updateSlider();
-        }
-
-        function updateSlider() {
-            currentTranslate = -currentIndex * 100;
-            slider.style.transition = 'transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1)';
-            slider.style.transform = `translateX(${currentTranslate}%)`;
-        }
-
-        // Touch Handling
-        lightbox.addEventListener('touchstart', e => {
-            touchStartX = e.touches[0].clientX;
-            isDragging = true;
-            slider.style.transition = 'none';
-        });
-
-        lightbox.addEventListener('touchmove', e => {
-            if (!isDragging) return;
-            
-            const currentX = e.touches[0].clientX;
-            const deltaX = touchStartX - currentX;
-            let newTranslate = currentTranslate + (-deltaX / window.innerWidth * 100);
-            
-            // Boundary limits
-            if(currentIndex === 0) newTranslate = Math.min(newTranslate, 0);
-            if(currentIndex === 2) newTranslate = Math.max(newTranslate, -200);
-            
-            slider.style.transform = `translateX(${newTranslate}%)`;
-        });
-
-        lightbox.addEventListener('touchend', e => {
-            if (!isDragging) return;
-            isDragging = false;
-            
-            const touchEndX = e.changedTouches[0].clientX;
-            const deltaX = touchStartX - touchEndX;
-            const threshold = window.innerWidth * 0.15;
-            
-            if (Math.abs(deltaX) > threshold) {
-                currentIndex = deltaX > 0 ? 
-                    Math.min(currentIndex + 1, 2) : 
-                    Math.max(currentIndex - 1, 0);
+            function navigate(direction) {
+                currentIndex = Math.max(0, Math.min(currentIndex + direction, maxIndex));
+                updateSlider();
             }
-            
-            updateSlider();
-        });
 
-        // Keyboard Navigation
-        document.addEventListener('keydown', e => {
-            if (lightbox.style.display === 'flex') {
-                if (e.key === 'ArrowLeft') navigate(-1, e);
-                if (e.key === 'ArrowRight') navigate(1, e);
-                if (e.key === 'Escape') closeLightbox(e);
+            function updateSlider() {
+                currentTranslate = -currentIndex * 100;
+                sliderContainer.style.transform = `translateX(${currentTranslate}%)`;
+                sliderContainer.style.transition = 'transform 0.3s var(--transition-timing)';
             }
-        });
 
-        // Prevent vertical scroll when swiping
-        lightbox.addEventListener('touchmove', e => {
-            if (isDragging) e.preventDefault();
-        }, { passive: false });
+            // Event Listeners
+            prevBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                navigate(-1);
+            });
+
+            nextBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                navigate(1);
+            });
+
+            closeBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                closeLightbox();
+            });
+
+            lightbox.addEventListener('click', e => {
+                if (e.target === lightbox) closeLightbox();
+            });
+
+            // Touch Handling
+            lightbox.addEventListener('touchstart', e => {
+                touchStartX = e.touches[0].clientX;
+                isDragging = true;
+                sliderContainer.style.transition = 'none';
+            });
+
+            lightbox.addEventListener('touchmove', e => {
+                if (!isDragging) return;
+                
+                const touchX = e.touches[0].clientX;
+                const deltaX = touchStartX - touchX;
+                const percentage = (deltaX / window.innerWidth) * 100;
+                
+                let newTranslate = currentTranslate + percentage;
+                
+                // Begrenzung für erste und letzte Slide
+                if (currentIndex === 0) newTranslate = Math.min(newTranslate, 0);
+                if (currentIndex === maxIndex) newTranslate = Math.max(newTranslate, -maxIndex * 100);
+                
+                sliderContainer.style.transform = `translateX(${newTranslate}%)`;
+            });
+
+            lightbox.addEventListener('touchend', e => {
+                if (!isDragging) return;
+                isDragging = false;
+                
+                const touchEndX = e.changedTouches[0].clientX;
+                const deltaX = touchStartX - touchEndX;
+                const threshold = window.innerWidth * 0.15;
+                
+                if (Math.abs(deltaX) > threshold) {
+                    navigate(deltaX > 0 ? 1 : -1);
+                } else {
+                    updateSlider();
+                }
+            });
+
+            // Keyboard Navigation
+            document.addEventListener('keydown', e => {
+                if (lightbox.style.display === 'flex') {
+                    if (e.key === 'ArrowLeft') navigate(-1);
+                    if (e.key === 'ArrowRight') navigate(1);
+                    if (e.key === 'Escape') closeLightbox();
+                }
+            });
+
+            // Prevent vertical scroll
+            lightbox.addEventListener('touchmove', e => {
+                if (isDragging) e.preventDefault();
+            }, { passive: false });
+        })();
     </script>
 </body>
 </html>
