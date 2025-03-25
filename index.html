@@ -173,11 +173,8 @@
             function navigate(direction) {
     if (isAnimating) return;
     
-    const newIndex = currentIndex + direction;
-    if (newIndex < 0 || newIndex > maxIndex) return;
-    
     isAnimating = true;
-    currentIndex = newIndex;
+    currentIndex = (currentIndex + direction + galleryItems.length) % galleryItems.length;
     currentPosition = -currentIndex * 100;
     
     sliderContainer.style.transition = 'transform 0.3s var(--transition-timing)';
@@ -232,9 +229,13 @@
     
     let newPosition = currentPosition + movePercentage;
     
-    // Begrenzung für erste und letzte Slide
-    if (currentIndex === 0 && newPosition > 0) newPosition = 0;
-    if (currentIndex === maxIndex && newPosition < -maxIndex * 100) newPosition = -maxIndex * 100;
+    // Endlos-Loop ermöglichen
+    if (currentIndex === 0 && newPosition > 0) {
+        newPosition = -galleryItems.length * 100 + movePercentage;
+    }
+    if (currentIndex === maxIndex && newPosition < -maxIndex * 100) {
+        newPosition = 100 + movePercentage;
+    }
     
     sliderContainer.style.transform = `translateX(${newPosition}%)`;
 });
@@ -251,11 +252,11 @@ lightbox.addEventListener('touchend', e => {
     
     if (absDelta > threshold) {
         const direction = deltaX > 0 ? -1 : 1;
-        navigate(direction);
-    } else {
-        // Zurück zur aktuellen Position
-        sliderContainer.style.transform = `translateX(${currentPosition}%)`;
+        currentIndex = (currentIndex + direction + galleryItems.length) % galleryItems.length;
     }
+    
+    currentPosition = -currentIndex * 100;
+    sliderContainer.style.transform = `translateX(${currentPosition}%)`;
 });
 
             // Keyboard Navigation
